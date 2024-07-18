@@ -150,7 +150,7 @@ async def stop(ctx):
 @client.event
 async def on_ready():
     print(f'{client.user.name} is ready! / {client.user.name} está listo!')
-    await client.change_presence(activity=discord.Game(name="!help"))
+    await client.change_presence(activity=discord.Game(name="!help || Bot hecho por @lostdou"))
 
 # Verifica que el bot esté en un canal de voz antes de reproducir / Ensure the bot is in a voice channel before playing
 @play.before_invoke
