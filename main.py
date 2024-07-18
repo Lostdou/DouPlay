@@ -1,3 +1,6 @@
+# Codigo por lostdou
+# Code by lostdou
+
 import os
 from typing import Final
 from dotenv import load_dotenv
