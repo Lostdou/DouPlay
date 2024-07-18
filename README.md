@@ -1,5 +1,5 @@
 # DouPlay 🤖🎶
-
+## A simple music bot for Discord / Un simple bot de musica para Discord
 ![image](https://github.com/user-attachments/assets/4a2c80c7-e3f1-4ec3-b9cd-a881dd149ff6)
 
 
