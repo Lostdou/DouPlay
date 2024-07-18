@@ -86,9 +86,20 @@ async def help(ctx):
     5- `!pause`: Pausa la canción en reproducción / Pauses the currently playing song 
     6- `!resume`: Reanuda la reproducción si la canción está pausada / Resumes playback if the song is paused
     7- `!stop`: Detiene la reproducción de la canción actual y borra la cola / Stops the current playback and clears the queue
-    8- `!help`: Muestra este mensaje / Shows this message
+    8- `!setprefix`: Puedes cambiar el prefijo del bot. Requiere permisos para `Gestionar Servidor` / You can change the bot prefix. Requires permissions for `Manage Guild`
+    9- `!help`: Muestra este mensaje / Shows this message
     """
     await ctx.send(help_message)
+
+@client.command() # Cambia el prefijo del bot / Changes the bot´s prefix
+async def setprefix(ctx, new_prefix: str):
+    # Verifica si el usuario tiene permisos para cambiar el prefijo / Check if the user has permissions to change the prefix
+    if ctx.author.guild_permissions.manage_guild:
+        # Actualiza el prefijo / Update the prefix
+        client.command_prefix = new_prefix
+        await ctx.send(f"Prefijo actualizado a `{new_prefix}`")
+    else:
+        await ctx.send("No tienes permisos para cambiar el prefijo.")
 
 @client.command() # Comando para unirse a un canal de voz / Command to join a voice channel
 async def join(ctx):
