@@ -8,7 +8,7 @@ import yt_dlp as youtube_dl
 import asyncio
 from pytube import Search
 import re
-from gtts import gTTS  # Importar gTTS para TTS / Import gTTS for TTS
+from gtts import gTTS
 
 # Cargar las variables de entorno desde el archivo .env / Load environment variables from .env file
 load_dotenv()
