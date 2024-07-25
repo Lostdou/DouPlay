@@ -8,6 +8,7 @@ import yt_dlp as youtube_dl
 import asyncio
 from pytube import Search
 import re
+from gtts import gTTS  # Importar gTTS para TTS / Import gTTS for TTS
 
 # Cargar las variables de entorno desde el archivo .env / Load environment variables from .env file
 load_dotenv()
@@ -90,13 +91,14 @@ async def help(ctx):
     **Available Commands / Comandos Disponibles:**
     1- `!join`: Permite al bot unirse al canal de voz del usuario que lo invoca / Allows the bot to join the voice channel of the invoking user 
     2- `!leave`: Permite al bot salir del canal de voz en el que está actualmente / Allows the bot to leave the current voice channel
-    3- `!play <song_name_or_URL>`: Busca y reproduce una canción desde YouTube basada en el nombre o URL proporcionado. Si ya hay una canción en reproducción, la agrega a la cola / SSearch and play a song from YouTube based on the name or URL provided. If a song is already playing, adds it to the queue
+    3- `!play <song_name_or_URL>`: Busca y reproduce una canción desde YouTube basada en el nombre o URL proporcionado. Si ya hay una canción en reproducción, la agrega a la cola / Search and play a song from YouTube based on the name or URL provided. If a song is already playing, adds it to the queue
     4- `!skip`: Salta a la siguiente canción en la cola / Skips to the next song in the queue
     5- `!pause`: Pausa la canción en reproducción / Pauses the currently playing song 
     6- `!resume`: Reanuda la reproducción si la canción está pausada / Resumes playback if the song is paused
     7- `!stop`: Detiene la reproducción de la canción actual y borra la cola / Stops the current playback and clears the queue
-    8- `!setprefix`: Puedes cambiar el prefijo del bot. Requiere permisos para `Gestionar Servidor` / You can change the bot prefix. Requires permissions for `Manage Guild`
-    9- `!help`: Muestra este mensaje / Shows this message
+    8- `!speak <text>`: Convierte el texto a voz y lo reproduce en el canal de voz / Converts text to speech and plays it in the voice channel
+    9- `!setprefix`: Puedes cambiar el prefijo del bot. Requiere permisos para `Gestionar Servidor` / You can change the bot prefix. Requires permissions for `Manage Guild`
+    10- `!help`: Muestra este mensaje / Shows this message
     """
     await ctx.send(help_message)
 
@@ -167,13 +169,26 @@ async def resume(ctx):
         ctx.voice_client.resume()
         await ctx.send("Reproducción reanudada / Playback resumed")
     else:
-        await ctx.send(" La canción no está pausada / The song is not paused")
+        await ctx.send("La canción no está pausada / The song is not paused")
 
 @client.command() # Comando para detener la reproducción y vaciar la cola / Command to stop playback and clear the queue
 async def stop(ctx):
     ctx.voice_client.stop()
     queue.clear()
     await ctx.send("Reproducción detenida y cola vaciada / Playback stopped and queue cleared")
+
+@client.command() # Comando para convertir texto a voz y reproducirlo en el canal de voz / Command to convert text to speech and play it in the voice channel
+async def speak(ctx, *, text: str):
+    if ctx.voice_client:
+        # Generar el archivo de audio / Generate the audio file
+        tts = gTTS(text=text, lang='es')
+        tts.save("tts.mp3")
+
+        # Reproducir el archivo de audio / Play the audio file
+        ctx.voice_client.play(discord.FFmpegPCMAudio("tts.mp3"), after=lambda e: print('done', e))
+        await ctx.send(f"{ctx.author.mention} via TTS: {text}")
+    else:
+        await ctx.send("Primero debes invitarme a un canal de voz usando !join / You must first invite me to a voice channel using !join")
 
 ## ============ Eventos / Events ==============
 
