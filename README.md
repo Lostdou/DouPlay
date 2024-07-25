@@ -1,5 +1,5 @@
 # DouPlay 🤖🎶
-## A simple music bot for Discord / Un simple bot de musica para Discord
+## A simple bot for Discord / Un bot de musica para Discord
 ![image](https://github.com/user-attachments/assets/4a2c80c7-e3f1-4ec3-b9cd-a881dd149ff6)
 
 
@@ -9,11 +9,11 @@
 ## 📚 Description/Descripción
 
 ### EN:
-- Music bot for Discord simple and easy to implement.
+- Music bot for Discord simple and easy to implement. (Now with TTS! :3)
 As simple as entering the credentials of your Discord App, running it and that's it.
 
 ### ES:
-- Bot de musica para Discord simple y de facil implementación.
+- Bot de musica para Discord simple y de facil implementación. (Ahora con TTS! :3)
 Tan sencillo como ingresar las credenciales de tu App de discord, ejecutarlo y ya estaría.
 
 ## 📋 Features/Caracteristicas
@@ -21,10 +21,12 @@ Tan sencillo como ingresar las credenciales de tu App de discord, ejecutarlo y y
 ### EN:
 - Allows you to listen to your favorite YT songs directly from your discord call.
 - Pause, resume, skip to the next song without any problem.
+- Also listen to the messages via TTS that your friend sends without a microphone, thanks to this Bot
 
 ### ES:
 - Permite escuchar tus canciones favoritas de YT directamente desde tu llamada de discord.
 - Pausa, reanuda, adelanta a la siguiente cancion sin ningun problema.
+- Tambien escucha los mensajes via TTS que envia tu amigo sin microfono, gracias a este Bot
 
 ## ⚙️ Installation/Instalación
 ### EN:
@@ -40,6 +42,7 @@ git clone https://github.com/Lostdou/DouPlay.git
 pip3 install python-dotenv
 pip3 install discord.py
 pip3 install yt-dlp
+pip3 install gtts
 ```
 3- Create a ".env" file in the same folder where you cloned the script and enter your app's token there
 
@@ -65,6 +68,7 @@ git clone https://github.com/Lostdou/DouPlay.git
 pip3 install python-dotenv
 pip3 install discord.py
 pip3 install yt-dlp
+pip3 install gtts
 ```
 3- Crea un archivo ".env" en la misma carpeta donde clonaste el script e ingresa ahi el token de tu app
 
@@ -86,6 +90,7 @@ python -m main.py
 - discord
 - yt_dlp
 - asyncio
+- gtts
 
 ## 📝 Details/Detalles
 ### EN:
