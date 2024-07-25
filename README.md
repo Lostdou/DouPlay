@@ -1,5 +1,5 @@
 # DouPlay 🤖🎶
-## A simple music bot for Discord / Un simple bot de musica para Discord
+## A simple bot for Discord / Un bot de musica para Discord
 ![image](https://github.com/user-attachments/assets/4a2c80c7-e3f1-4ec3-b9cd-a881dd149ff6)
 
 
@@ -9,11 +9,11 @@
 ## 📚 Description/Descripción
 
 ### EN:
-- Music bot for Discord simple and easy to implement.
+- Music bot for Discord simple and easy to implement. (Now with TTS! :3)
 As simple as entering the credentials of your Discord App, running it and that's it.
 
 ### ES:
-- Bot de musica para Discord simple y de facil implementación.
+- Bot de musica para Discord simple y de facil implementación. (Ahora con TTS! :3)
 Tan sencillo como ingresar las credenciales de tu App de discord, ejecutarlo y ya estaría.
 
 ## 📋 Features/Caracteristicas
