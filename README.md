@@ -90,16 +90,17 @@ python -m main.py
 - discord
 - yt_dlp
 - asyncio
+- re
 - gtts
 
 ## 📝 Details/Detalles
 ### EN:
-When testing on a local host (my PC), it gave some random lag spikes that caused the music to speed up at times to synchronize and in some cases it stopped altogether.
-I imagine it was my internet, so I recommend getting a decent host or just a good internet xd
+It may be that when you ask the bot for a song, it does not actually play the song and the file remains there. The easy solution to the problem is to ask for the song back.
+I'll have to fix it in the future.
 
 ### ES:
-Al testear en un host local (mi pc), da algunos lag spikes random que hacian que la musica se acelere por momentos para sincronizarse y en algunos casos directamente se cortaba.
-Imagino que se trataba de mi internet, asi que recomiendo que consigan un host decente o simplemente un buen internet xd
+Puede que al pedirle una cancion al bot, este no reproduzca la cancion realmente y el archivo quede ahi. La solucion facil del problema, es pedirle devuelta la cancion.
+Temdré que solucionarlo a futuro
 
 ## ❓ Doubts/Dudas
 
