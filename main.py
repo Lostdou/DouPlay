@@ -2,7 +2,7 @@ import os
 from typing import Final
 from dotenv import load_dotenv
 from discord.ext import commands
-from discord import Intents
+from discord import Intents, Embed
 import discord
 import yt_dlp as youtube_dl
 import asyncio
@@ -10,16 +10,16 @@ from pytube import Search
 import re
 from gtts import gTTS
 
-# Cargar las variables de entorno desde el archivo .env / Load environment variables from .env file
+# Cargar las variables de entorno desde el archivo .env
 load_dotenv()
 TOKEN: Final[str] = os.getenv('DISCORD_TOKEN')
 
-# Configuración de yt_dlp para la descarga y extracción de audio / yt_dlp configuration for audio downloading and extraction
+# Configuración de yt_dlp para la descarga y extracción de audio
 youtube_dl.utils.bug_reports_message = lambda: ''
 
 ytdl_format_options = {
     'format': 'bestaudio/best',
-    'outtmpl': '%(extractor)s-%(id)s-%(title)s.%(ext)s',
+    'outtmpl': 'audio/%(extractor)s-%(id)s-%(title)s.%(ext)s',
     'restrictfilenames': True,
     'noplaylist': True,
     'nocheckcertificate': True,
@@ -35,18 +35,22 @@ ytdl_format_options = {
 
 ffmpeg_options = {
     'before_options': '-nostdin',
-    'options': '-vn -af "aresample=async=1" -threads 1 -loglevel panic'
+    'options': '-vn -loglevel panic'
 }
-
 ytdl = youtube_dl.YoutubeDL(ytdl_format_options)
 
-# Clase para manejar la reproducción de audio / Class to handle audio playback
+# Asegurarse de que la carpeta "audio" exista
+if not os.path.exists("audio"):
+    os.makedirs("audio")
+
+# Clase para manejar la reproducción de audio
 class YTDLSource(discord.PCMVolumeTransformer):
     def __init__(self, source, *, data, volume=0.5):
         super().__init__(source, volume)
         self.data = data
         self.title = data.get('title')
         self.url = data.get('url')
+        self.filename = ytdl.prepare_filename(data)  # Guardar el nombre del archivo para eliminarlo después
 
     @classmethod
     async def from_url(cls, url, *, loop=None, stream=False):
@@ -56,22 +60,41 @@ class YTDLSource(discord.PCMVolumeTransformer):
             data = data['entries'][0]
         filename = data['url'] if stream else ytdl.prepare_filename(data)
         return cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options), data=data)
-
+    
+    def cleanup(self):  # Eliminar el archivo después de reproducirlo
+        if self.filename and os.path.exists(self.filename):
+            os.remove(self.filename)
+    
 # Configuración de los intents y creación del bot / Intents configuration and bot creation
 intents = Intents.default()
 intents.message_content = True
-client = commands.Bot(command_prefix='!', intents=intents, help_command=None)
+client = commands.Bot(command_prefix='d!', intents=intents, help_command=None)
 
 # Cola de reproducción / Playback queue
 queue = []
 
 ## ========= Funciones / Functions ==============
 
-def play_next(ctx): # Función para reproducir la siguiente canción en la cola / Function to play the next song in the queue
+def send_embed(ctx, title, description):
+    embed = Embed(title=title, description=description, color=discord.Color.blurple())
+    return ctx.send(embed=embed)
+
+def play_next(ctx):  # Función para reproducir la siguiente canción en la cola
     if queue:
         next_player = queue.pop(0)
-        ctx.voice_client.play(next_player, after=lambda e: play_next(ctx))
-        asyncio.run_coroutine_threadsafe(ctx.send(f'Reproduciendo: {next_player.title} / Playing: {next_player.title}'), client.loop)
+        ctx.voice_client.play(next_player, after=lambda e: cleanup_and_play_next(ctx, next_player))
+        asyncio.run_coroutine_threadsafe(
+            send_embed(ctx, 'Reproduciendo', next_player.title), client.loop)
+
+def on_song_end(ctx, player): # Función para manejar el final de una canción
+    # Eliminar el archivo de audio después de la reproducción
+    try:
+        os.remove(player.filename)
+        print(f"Archivo eliminado: {player.filename}")
+    except Exception as e:
+        print(f"Error al eliminar archivo: {e}")
+    # Reproducir la siguiente canción
+    play_next(ctx)
 
 async def search_song(query): # Buscar la canción en YouTube usando pytube / Search for the song on YouTube using pytube
     s = Search(query)
@@ -79,6 +102,10 @@ async def search_song(query): # Buscar la canción en YouTube usando pytube / Se
     if result:
         return f'https://www.youtube.com/watch?v={result[0].video_id}'
     return None
+
+def cleanup_and_play_next(ctx, player):  # Borra el archivo del audio y reproducir la siguiente canción
+    player.cleanup()
+    play_next(ctx)
 
 def is_url(string): # Comprobar si el string es una URL / Check if the string is a URL
     return re.match(r'^(http|https)://', string) is not None
@@ -97,10 +124,10 @@ async def help(ctx):
     6- `!resume`: Reanuda la reproducción si la canción está pausada / Resumes playback if the song is paused
     7- `!stop`: Detiene la reproducción de la canción actual y borra la cola / Stops the current playback and clears the queue
     8- `!speak <text>`: Convierte el texto a voz y lo reproduce en el canal de voz / Converts text to speech and plays it in the voice channel
-    9- `!setprefix`: Puedes cambiar el prefijo del bot. Requiere permisos para `Gestionar Servidor` / You can change the bot prefix. Requires permissions for `Manage Guild`
+    9- `!setprefix`: Puedes cambiar el prefijo del bot. Requiere permisos para Gestionar Servidor / You can change the bot prefix. Requires permissions for Manage Guild
     10- `!help`: Muestra este mensaje / Shows this message
     """
-    await ctx.send(help_message)
+    await send_embed(ctx, 'Comandos Disponibles', help_message)
 
 @client.command() # Cambia el prefijo del bot / Changes the bot´s prefix
 async def setprefix(ctx, new_prefix: str):
@@ -108,26 +135,39 @@ async def setprefix(ctx, new_prefix: str):
     if ctx.author.guild_permissions.manage_guild:
         # Actualiza el prefijo / Update the prefix
         client.command_prefix = new_prefix
-        await ctx.send(f"Prefijo actualizado a: `{new_prefix}` / Prefix updated to: `{new_prefix}`")
+        await send_embed(ctx, 'Prefijo Actualizado', f"Prefijo actualizado a: {new_prefix} / Prefix updated to: {new_prefix}")
     else:
-        await ctx.send("No tienes permisos para cambiar el prefijo. / You do not have permissions to change the prefix.")
+        await send_embed(ctx, 'Permisos Denegados', "No tienes permisos para cambiar el prefijo. / You do not have permissions to change the prefix.")
 
 @client.command() # Comando para unirse a un canal de voz / Command to join a voice channel
 async def join(ctx):
     if not ctx.message.author.voice:
-        await ctx.send("Debes estar en un canal de voz para usar este comando / You must be in a voice channel to use this command")
+        await send_embed(ctx, 'Error', "Debes estar en un canal de voz para usar este comando / You must be in a voice channel to use this command")
         return
     channel = ctx.message.author.voice.channel
     await channel.connect()
 
-@client.command() # Comando para salir de un canal de voz / Command to leave a voice channel
+@client.command()  # Comando para salir de un canal de voz y limpiar archivos
 async def leave(ctx):
     if not ctx.voice_client:
-        await ctx.send("No estoy en un canal de voz / I am not in a voice channel")
+        await send_embed(ctx, 'Error', "No estoy en un canal de voz / I am not in a voice channel")
         return
+    
+    # Limpiar archivos de error en la carpeta "audio"
+    audio_folder = "audio"
+    if os.path.exists(audio_folder):
+        for filename in os.listdir(audio_folder):
+            file_path = os.path.join(audio_folder, filename)
+            try:
+                os.remove(file_path)
+                print(f"Archivo eliminado: {file_path}")
+            except Exception as e:
+                print(f"No se pudo eliminar {file_path}: {e}")
+    
     await ctx.voice_client.disconnect()
+    await send_embed(ctx, 'Desconectado', "Me he desconectado del canal de voz / Disconnected from the voice channel")
 
-@client.command() # Comando para reproducir una canción desde una URL o nombre de canción / Command to play a song from a URL or song name
+@client.command()  # Comando para reproducir una canción desde una URL o nombre de canción
 async def play(ctx, *, search: str):
     async with ctx.typing():
         if is_url(search):
@@ -135,60 +175,61 @@ async def play(ctx, *, search: str):
         else:
             url = await search_song(search)
             if not url:
-                await ctx.send("No se encontró ninguna canción / No song found")
+                await send_embed(ctx, 'No Encontrado', "No se encontró ninguna canción / No song found")
                 return
         
-        player = await YTDLSource.from_url(url, loop=client.loop, stream=True)
+        player = await YTDLSource.from_url(url, loop=client.loop, stream=False)
         if ctx.voice_client.is_playing():
             queue.append(player)
-            await ctx.send(f'Agregado a la cola: {player.title} / Added to queue: {player.title}')
+            await send_embed(ctx, 'Agregado a la Cola', f'Agregado a la cola: {player.title} / Added to queue: {player.title}')
         else:
-            ctx.voice_client.play(player, after=lambda e: play_next(ctx))
-            await ctx.send(f'Reproduciendo: {player.title} / Playing: {player.title}')
+            ctx.voice_client.play(player, after=lambda e: cleanup_and_play_next(ctx, player))
+            await send_embed(ctx, 'Reproduciendo', f'Reproduciendo: {player.title} / Playing: {player.title}')
 
 @client.command() # Comando para saltar a la siguiente canción en la cola / Command to skip to the next song in the queue
 async def skip(ctx):
     if ctx.voice_client and ctx.voice_client.is_playing():
         ctx.voice_client.stop()
-        await ctx.send("Canción saltada / Song skipped")
+        await send_embed(ctx, 'Canción Saltada', "Canción saltada / Song skipped")
         play_next(ctx)
     else:
-        await ctx.send("No hay ninguna canción en reproducción / There is no song currently playing")
+        await send_embed(ctx, 'Nada Reproduciendo', "No hay ninguna canción en reproducción / There is no song currently playing")
 
 @client.command() # Comando para pausar la reproducción actual / Command to pause the current playback
 async def pause(ctx):
     if ctx.voice_client.is_playing():
         ctx.voice_client.pause()
-        await ctx.send("Reproducción pausada / Playback paused")
+        await send_embed(ctx, 'Pausado', "Reproducción pausada / Playback paused")
     else:
-        await ctx.send("No hay ninguna canción en reproducción / There is no song currently playing")
+        await send_embed(ctx, 'Nada Reproduciendo', "No hay ninguna canción en reproducción / There is no song currently playing")
 
 @client.command() # Comando para reanudar la reproducción si está pausada / Command to resume playback if paused
 async def resume(ctx):
     if ctx.voice_client.is_paused():
         ctx.voice_client.resume()
-        await ctx.send("Reproducción reanudada / Playback resumed")
+        await send_embed(ctx, 'Reanudado', "Reproducción reanudada / Playback resumed")
     else:
-        await ctx.send("La canción no está pausada / The song is not paused")
+        await send_embed(ctx, 'No Pausado', "La canción no está pausada / The song is not paused")
 
 @client.command() # Comando para detener la reproducción y vaciar la cola / Command to stop playback and clear the queue
 async def stop(ctx):
     ctx.voice_client.stop()
     queue.clear()
-    await ctx.send("Reproducción detenida y cola vaciada / Playback stopped and queue cleared")
+    await send_embed(ctx, 'Detenido', "Reproducción detenida y cola vaciada / Playback stopped and queue cleared")
 
-@client.command() # Comando para convertir texto a voz y reproducirlo en el canal de voz / Command to convert text to speech and play it in the voice channel
+@client.command()  # Comando para convertir texto a voz y reproducirlo en el canal de voz / Command to convert text to speech and play it on the voice channel
 async def speak(ctx, *, text: str):
     if ctx.voice_client:
-        # Generar el archivo de audio / Generate the audio file
+        # Generar el archivo de audio y guardarlo en la carpeta "audio"
         tts = gTTS(text=text, lang='es')
-        tts.save("tts.mp3")
+        tts_filename = 'audio/tts.mp3'
+        tts.save(tts_filename)
 
-        # Reproducir el archivo de audio / Play the audio file
-        ctx.voice_client.play(discord.FFmpegPCMAudio("tts.mp3"), after=lambda e: print('done', e))
-        await ctx.send(f"{ctx.author.mention} via TTS: {text}")
+        # Reproducir el archivo de audio y eliminarlo después de reproducirlo
+        ctx.voice_client.play(discord.FFmpegPCMAudio(tts_filename), after=lambda e: os.remove(tts_filename))
+        await send_embed(ctx, 'Texto a Voz', f"{ctx.author.mention} via TTS: {text}")
     else:
-        await ctx.send("Primero debes invitarme a un canal de voz usando !join / You must first invite me to a voice channel using !join")
+        await send_embed(ctx, 'Error', "Primero debes invitarme a un canal de voz usando !join / You must first invite me to a voice channel using !join")
 
 ## ============ Eventos / Events ==============
 
@@ -197,6 +238,21 @@ async def speak(ctx, *, text: str):
 async def on_ready():
     print(f'{client.user.name} está listo! / {client.user.name} is ready!')
     await client.change_presence(activity=discord.Game(name="!help || @lostdou"))
+
+# Verifica si el bot es sacado de la llamada para limpiar la carpeta audio
+@client.event
+async def on_voice_state_update(member, before, after):
+    if member == client.user and before.channel is not None and after.channel is None:
+        audio_folder = "audio"
+        if os.path.exists(audio_folder):
+            for filename in os.listdir(audio_folder):
+                file_path = os.path.join(audio_folder, filename)
+                try:
+                    os.remove(file_path)
+                    print(f"Archivo eliminado: {file_path}")
+                except Exception as e:
+                    print(f"No se pudo eliminar {file_path}: {e}")
+        print("El bot fue desconectado del canal de voz.")
 
 # Verifica que el bot esté en un canal de voz antes de reproducir / Ensure the bot is in a voice channel before playing
 @play.before_invoke
